@@ -1455,7 +1455,12 @@ net_amqp_rabbitmq_recv(conn, timeout = 0)
       timeout_tv.tv_usec = 0;
     }
 
-    die_on_amqp_error(aTHX_ consume_message(conn, &RETVAL, timeout ? &timeout_tv : NULL), conn, "recv");
+    ret = consume_message(conn, &RETVAL, timeout ? &timeout_tv : NULL);
+    maybe_release_buffers(conn);
+
+    if (AMQP_RESPONSE_LIBRARY_EXCEPTION != ret.reply_type || AMQP_STATUS_TIMEOUT != ret.library_error) {
+        die_on_amqp_error(aTHX_ ret, conn, "recv");
+    }
 
   OUTPUT:
     RETVAL
