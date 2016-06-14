@@ -48,10 +48,6 @@ while ( $i < 100_000 ) {
 my $diff = get_mem() - $start_mem;
 ok( $diff < 1, "memory usage hasn't risen by more than 1mb (${diff}mb)" );
 
-use Devel::MAT::Dumper;
- 
-Devel::MAT::Dumper::dump( "dump.pmat" );
-
 sub get_mem {
     my $mem = `grep VmRSS /proc/$$/status`;
     return [split(qr/\s+/, $mem)]->[1] / 1024;

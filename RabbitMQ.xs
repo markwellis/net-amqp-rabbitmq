@@ -370,13 +370,6 @@ static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envel
     hv_stores(envelope_hv, "consumer_tag", newSVpvn(envelope.consumer_tag.bytes, envelope.consumer_tag.len));
     hv_stores(envelope_hv, "routing_key",  newSVpvn(envelope.routing_key.bytes, envelope.routing_key.len));
 
-    SV *body_sv = newSVpvn(envelope.message.body.bytes, envelope.message.body.len);
-    if (is_utf8_body) {
-        SvUTF8_on(body_sv);
-    }
-    hv_stores(envelope_hv, "body", body_sv);
-
-
     props_hv = newHV();
 
     amqp_basic_properties_t *p = &envelope.message.properties;
@@ -600,7 +593,15 @@ static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envel
     }
 
     hv_stores(envelope_hv, "props", newRV_noinc(MUTABLE_SV(props_hv)));
+
+    SV *body_sv = newSVpvn(envelope.message.body.bytes, envelope.message.body.len);
+    if (is_utf8_body) {
+        SvUTF8_on(body_sv);
+    }
+    hv_stores(envelope_hv, "body", body_sv);
+
     *envelope_sv_ptr = newRV_noinc(MUTABLE_SV(envelope_hv));
+
     amqp_destroy_envelope( &envelope );
     return ret;
 
