@@ -142,14 +142,45 @@ void die_on_amqp_error(pTHX_ amqp_rpc_reply_t x, amqp_connection_state_t conn, c
       ) {
         amqp_socket_close( amqp_get_socket( conn ) );
         Perl_croak(aTHX_ "%s: failed since AMQP socket connection closed.\n", context);
+        break;
       }
-      /* Otherwise, give a more generic croak. */
-      else {
-        Perl_croak(aTHX_ "%s: %s\n", context,
-                  (!x.library_error) ? "(end-of-stream)" :
-                  (x.library_error == AMQP_STATUS_UNKNOWN_TYPE) ? "unknown AMQP type id" :
-                  amqp_error_string2(x.library_error));
-      }
+      else if ( x.library_error == AMQP_STATUS_UNEXPECTED_STATE ) {
+          //try to decode the state
+          int res;
+          amqp_frame_t frame;
+          res = amqp_simple_wait_frame_noblock(conn, &frame, 0);
+          if (AMQP_FRAME_HEADER != frame.frame_type) {
+            if (
+                AMQP_FRAME_METHOD == frame.frame_type
+                && (
+                    AMQP_CHANNEL_CLOSE_METHOD == frame.payload.method.id
+                    || AMQP_CONNECTION_CLOSE_METHOD == frame.payload.method.id
+                )
+            ) {
+                {
+                    amqp_connection_close_ok_t req;
+                    req.dummy = '\0';
+                    /* res = */ amqp_send_method(conn, 0, AMQP_CONNECTION_CLOSE_OK_METHOD, &req);
+                }
+                amqp_set_socket(conn, NULL);
+                {
+                    amqp_connection_close_t *m = (amqp_connection_close_t *) frame.payload.method.decoded;
+                    Perl_croak(aTHX_ "%s: server connection error %d, message: %.*s",
+                            context,
+                            m->reply_code,
+                            (int) m->reply_text.len, (char *) m->reply_text.bytes);
+                    break;
+                }
+            }
+          }
+
+          /* Otherwise, give a more generic croak. */
+          Perl_croak(aTHX_ "%s: %s\n", context,
+              (!x.library_error) ? "(end-of-stream)" :
+              (x.library_error == AMQP_STATUS_UNKNOWN_TYPE) ? "unknown AMQP type id" :
+              amqp_error_string2(x.library_error)
+            );
+          }
       break;
 
     case AMQP_RESPONSE_SERVER_EXCEPTION:
