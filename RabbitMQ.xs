@@ -1490,8 +1490,6 @@ net_amqp_rabbitmq_recv(conn, timeout = 0)
   Net::AMQP::RabbitMQ conn
   int timeout
   PREINIT:
-    HV *envelope_hv;
-    HV *props_hv;
     amqp_rpc_reply_t ret;
     struct timeval timeout_tv;
   CODE:
