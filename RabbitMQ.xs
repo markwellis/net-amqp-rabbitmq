@@ -351,222 +351,222 @@ amqp_rpc_reply_t parse_message( amqp_message_t message, SV **props_sv_ptr, SV **
 
     amqp_basic_properties_t *p = &message.properties;
     if (p->_flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
-        hv_stores(props_hv, "content_type", newSVpvn(p->content_type.bytes, p->content_type.len));
+      hv_stores(props_hv, "content_type", newSVpvn(p->content_type.bytes, p->content_type.len));
     }
     if (p->_flags & AMQP_BASIC_CONTENT_ENCODING_FLAG) {
-        hv_stores(props_hv, "content_encoding", newSVpvn(p->content_encoding.bytes, p->content_encoding.len));
+      hv_stores(props_hv, "content_encoding", newSVpvn(p->content_encoding.bytes, p->content_encoding.len));
 
-        /*
-         * Since we could have UTF-8 in our content-encoding, and most people seem like they
-         * treat this like the default, we're looking for the presence of content-encoding but
-         * the absence of a case-insensitive "UTF-8".
-         */
-        if (
-                strnlen(p->content_encoding.bytes, p->content_encoding.len) > 0
-                &&
-                (strncasecmp(p->content_encoding.bytes, "UTF-8", p->content_encoding.len) != 0)
-           ) {
-            is_utf8_body = 0;
-        }
+      /*
+       * Since we could have UTF-8 in our content-encoding, and most people seem like they
+       * treat this like the default, we're looking for the presence of content-encoding but
+       * the absence of a case-insensitive "UTF-8".
+       */
+      if (
+        strnlen(p->content_encoding.bytes, p->content_encoding.len) > 0
+        &&
+        (strncasecmp(p->content_encoding.bytes, "UTF-8", p->content_encoding.len) != 0)
+      ) {
+        is_utf8_body = 0;
+      }
     }
     if (p->_flags & AMQP_BASIC_CORRELATION_ID_FLAG) {
-        hv_stores(props_hv, "correlation_id", newSVpvn(p->correlation_id.bytes, p->correlation_id.len));
+      hv_stores(props_hv, "correlation_id", newSVpvn(p->correlation_id.bytes, p->correlation_id.len));
     }
     if (p->_flags & AMQP_BASIC_REPLY_TO_FLAG) {
-        hv_stores(props_hv, "reply_to", newSVpvn(p->reply_to.bytes, p->reply_to.len));
+      hv_stores(props_hv, "reply_to", newSVpvn(p->reply_to.bytes, p->reply_to.len));
     }
     if (p->_flags & AMQP_BASIC_EXPIRATION_FLAG) {
-        hv_stores(props_hv, "expiration", newSVpvn(p->expiration.bytes, p->expiration.len));
+      hv_stores(props_hv, "expiration", newSVpvn(p->expiration.bytes, p->expiration.len));
     }
     if (p->_flags & AMQP_BASIC_MESSAGE_ID_FLAG) {
-        hv_stores(props_hv, "message_id", newSVpvn(p->message_id.bytes, p->message_id.len));
+      hv_stores(props_hv, "message_id", newSVpvn(p->message_id.bytes, p->message_id.len));
     }
     if (p->_flags & AMQP_BASIC_TYPE_FLAG) {
-        hv_stores(props_hv, "type", newSVpvn(p->type.bytes, p->type.len));
+      hv_stores(props_hv, "type", newSVpvn(p->type.bytes, p->type.len));
     }
     if (p->_flags & AMQP_BASIC_USER_ID_FLAG) {
-        hv_stores(props_hv, "user_id", newSVpvn(p->user_id.bytes, p->user_id.len));
+      hv_stores(props_hv, "user_id", newSVpvn(p->user_id.bytes, p->user_id.len));
     }
     if (p->_flags & AMQP_BASIC_APP_ID_FLAG) {
-        hv_stores(props_hv, "app_id", newSVpvn(p->app_id.bytes, p->app_id.len));
+      hv_stores(props_hv, "app_id", newSVpvn(p->app_id.bytes, p->app_id.len));
     }
     if (p->_flags & AMQP_BASIC_DELIVERY_MODE_FLAG) {
-        hv_stores(props_hv, "delivery_mode", newSViv(p->delivery_mode));
+      hv_stores(props_hv, "delivery_mode", newSViv(p->delivery_mode));
     }
     if (p->_flags & AMQP_BASIC_PRIORITY_FLAG) {
-        hv_stores(props_hv, "priority", newSViv(p->priority));
+      hv_stores(props_hv, "priority", newSViv(p->priority));
     }
     if (p->_flags & AMQP_BASIC_TIMESTAMP_FLAG) {
-        hv_stores(props_hv, "timestamp", newSViv(p->timestamp));
+      hv_stores(props_hv, "timestamp", newSViv(p->timestamp));
     }
     if (p->_flags & AMQP_BASIC_HEADERS_FLAG) {
-        int i;
-        HV *headers = newHV();
-        hv_stores(props_hv, "headers", newRV_noinc(MUTABLE_SV(headers)));
+      int i;
+      HV *headers = newHV();
+      hv_stores(props_hv, "headers", newRV_noinc(MUTABLE_SV(headers)));
 
-        __DEBUG__( dump_table( p->headers ) );
+      __DEBUG__( dump_table( p->headers ) );
 
-        for( i=0; i < p->headers.num_entries; ++i ) {
-            amqp_table_entry_t *header_entry = &(p->headers.entries[i]);
+      for( i=0; i < p->headers.num_entries; ++i ) {
+        amqp_table_entry_t *header_entry = &(p->headers.entries[i]);
 
-            __DEBUG__(
-                    fprintf(stderr,
-                        "~~~ Length: %ld/%d, Key: %.*s, Kind: %c\n",
-                        header_entry->key.len,
-                        (int)header_entry->key.len,
-                        (int)header_entry->key.len,
-                        (char*)header_entry->key.bytes,
-                        header_entry->value.kind
-                        )
-                    );
+        __DEBUG__(
+          fprintf(stderr,
+            "~~~ Length: %ld/%d, Key: %.*s, Kind: %c\n",
+            header_entry->key.len,
+            (int)header_entry->key.len,
+            (int)header_entry->key.len,
+            (char*)header_entry->key.bytes,
+            header_entry->value.kind
+          )
+        );
 
-            switch (header_entry->value.kind) {
-                case AMQP_FIELD_KIND_BOOLEAN:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSViv(header_entry->value.value.boolean),
-                            0
-                            );
-                    break;
+        switch (header_entry->value.kind) {
+          case AMQP_FIELD_KIND_BOOLEAN:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSViv(header_entry->value.value.boolean),
+                0
+            );
+            break;
 
-                    // Integer types
-                case AMQP_FIELD_KIND_I8:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSViv(header_entry->value.value.i8),
-                            0
-                            );
-                    break;
+          // Integer types
+          case AMQP_FIELD_KIND_I8:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSViv(header_entry->value.value.i8),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_I16:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSViv(header_entry->value.value.i16),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_I16:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSViv(header_entry->value.value.i16),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_I32:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSViv(header_entry->value.value.i32),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_I32:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSViv(header_entry->value.value.i32),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_I64:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVi64(header_entry->value.value.i64),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_I64:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVi64(header_entry->value.value.i64),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_U8:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVuv(header_entry->value.value.u8),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_U8:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVuv(header_entry->value.value.u8),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_U16:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVuv(header_entry->value.value.u16),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_U16:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVuv(header_entry->value.value.u16),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_U32:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVuv(header_entry->value.value.u32),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_U32:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVuv(header_entry->value.value.u32),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_U64:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVu64(header_entry->value.value.u64),
-                            0
-                            );
-                    break;
+          case AMQP_FIELD_KIND_U64:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVu64(header_entry->value.value.u64),
+                0
+            );
+            break;
 
-                    // Floating point precision
-                case AMQP_FIELD_KIND_F32:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVnv(header_entry->value.value.f32),
-                            0
-                            );
-                    break;
+          // Floating point precision
+          case AMQP_FIELD_KIND_F32:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVnv(header_entry->value.value.f32),
+                0
+            );
+            break;
 
-                case AMQP_FIELD_KIND_F64:
-                    // TODO: I don't think this is a natively supported type on all Perls.
+          case AMQP_FIELD_KIND_F64:
+            // TODO: I don't think this is a natively supported type on all Perls.
 
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
 #ifdef USE_LONG_DOUBLE
-                            /* amqp uses doubles, if perl is -Duselongdouble it messes up the precision
-                             * so we always want take the max precision from a double and discard the rest
-                             * because it can't be any more precise than a double */
-                            newSVnv( ( rint( header_entry->value.value.f64 * DOUBLE_POW ) / DOUBLE_POW ) ),
+                /* amqp uses doubles, if perl is -Duselongdouble it messes up the precision
+                 * so we always want take the max precision from a double and discard the rest
+                 * because it can't be any more precise than a double */
+                newSVnv( ( rint( header_entry->value.value.f64 * DOUBLE_POW ) / DOUBLE_POW ) ),
 #else
-                            /* both of these are doubles so it's ok */
-                            newSVnv( header_entry->value.value.f64 ),
+                /* both of these are doubles so it's ok */
+                newSVnv( header_entry->value.value.f64 ),
 #endif
-                            0
-                            );
-                    break;
+                0
+            );
+            break;
 
-                    // Handle kind UTF8 and kind BYTES
-                case AMQP_FIELD_KIND_UTF8:
-                case AMQP_FIELD_KIND_BYTES:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            newSVpvn_utf8(
-                                header_entry->value.value.bytes.bytes,
-                                header_entry->value.value.bytes.len,
-                                AMQP_FIELD_KIND_UTF8 == header_entry->value.kind
-                                ),
-                            0
-                            );
-                    break;
+          // Handle kind UTF8 and kind BYTES
+          case AMQP_FIELD_KIND_UTF8:
+          case AMQP_FIELD_KIND_BYTES:
+            hv_store( headers,
+                header_entry->key.bytes, header_entry->key.len,
+                newSVpvn_utf8(
+                  header_entry->value.value.bytes.bytes,
+                  header_entry->value.value.bytes.len,
+                  AMQP_FIELD_KIND_UTF8 == header_entry->value.kind
+                ),
+                0
+            );
+            break;
 
-                    // Handle arrays
-                case AMQP_FIELD_KIND_ARRAY:
-                    __DEBUG__(
-                            fprintf(stderr, "ARRAY KIND FOR KEY:>%.*s< KIND:>%c< AMQP_FIELD_KIND_ARRAY:[%c].\n",
-                                (int)header_entry->key.len,
-                                (char*)header_entry->key.bytes,
-                                header_entry->value.kind,
-                                AMQP_FIELD_KIND_ARRAY
-                                )
-                            );
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            mq_array_to_arrayref( &header_entry->value.value.array ),
-                            0
-                            );
-                    break;
+          // Handle arrays
+          case AMQP_FIELD_KIND_ARRAY:
+            __DEBUG__(
+              fprintf(stderr, "ARRAY KIND FOR KEY:>%.*s< KIND:>%c< AMQP_FIELD_KIND_ARRAY:[%c].\n",
+                (int)header_entry->key.len,
+                (char*)header_entry->key.bytes,
+                header_entry->value.kind,
+                AMQP_FIELD_KIND_ARRAY
+              )
+            );
+            hv_store( headers,
+              header_entry->key.bytes, header_entry->key.len,
+              mq_array_to_arrayref( &header_entry->value.value.array ),
+              0
+            );
+            break;
 
-                    // Handle tables (hashes when translated to Perl)
-                case AMQP_FIELD_KIND_TABLE:
-                    hv_store( headers,
-                            header_entry->key.bytes, header_entry->key.len,
-                            mq_table_to_hashref( &header_entry->value.value.table ),
-                            0
-                            );
-                    break;
+          // Handle tables (hashes when translated to Perl)
+          case AMQP_FIELD_KIND_TABLE:
+            hv_store( headers,
+              header_entry->key.bytes, header_entry->key.len,
+              mq_table_to_hashref( &header_entry->value.value.table ),
+              0
+            );
+            break;
 
-                default:
-                    ret.reply_type = AMQP_RESPONSE_LIBRARY_EXCEPTION;
-                    ret.library_error = AMQP_STATUS_UNKNOWN_TYPE;
-                    goto error_out;
-            }
+          default:
+            ret.reply_type = AMQP_RESPONSE_LIBRARY_EXCEPTION;
+            ret.library_error = AMQP_STATUS_UNKNOWN_TYPE;
+            goto error_out;
         }
+      }
     }
 
     body_sv = newSVpvn(message.body.bytes, message.body.len);
