@@ -1018,15 +1018,17 @@ static amqp_rpc_reply_t basic_get(amqp_connection_state_t state, amqp_channel_t 
     hv_stores(envelope_hv, "message_count", newSViv(ok->message_count));
   }
 
-  amqp_message_t *message;
+  amqp_message_t message;
 
-  ret = amqp_read_message(state, channel, message, 0);
+  ret = amqp_read_message(state, channel, &message, 0);
 
-//    hv_fetchs(envelope_hv, "props", 1),
-//    hv_fetchs(envelope_hv, "body",  1));
-  if (AMQP_RESPONSE_NORMAL != ret.reply_type)
+  ret = parse_message( message, hv_fetchs(envelope_hv, "props", 1), hv_fetchs(envelope_hv, "body", 1) );
+  amqp_destroy_message( &message );
+
+  if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
     goto error_out;
-  
+  }
+
 success_out:
   *envelope_sv_ptr = envelope_hv ? newRV_noinc(MUTABLE_SV(envelope_hv)) : &PL_sv_undef;
   ret.reply_type = AMQP_RESPONSE_NORMAL;
