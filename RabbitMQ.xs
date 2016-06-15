@@ -343,9 +343,7 @@ amqp_field_value_kind_t amqp_kind_for_sv(SV** perl_value, short force_utf8) {
   Perl_croak( aTHX_ "The wheels have fallen off. Please call for help." );
 }
 
-amqp_rpc_reply_t parse_message( amqp_message_t message, SV **props_sv_ptr, SV **body_sv_ptr ) {
-  SvREFCNT_dec( *props_sv_ptr );
-  SvREFCNT_dec( *body_sv_ptr );
+static amqp_rpc_reply_t parse_amqp_message( amqp_message_t message, SV **props_sv_ptr, SV **body_sv_ptr ) {
     HV *props_hv = newHV();
     SV *body_sv;
     int is_utf8_body = 1; /* The body is UTF-8 by default */
@@ -589,10 +587,12 @@ error_out:
     return ret;
 }
 
-/* wraps amqp_consume_message */
+/* perl glue for amqp_consume_message */
 static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envelope_sv_ptr, struct timeval *timeout) {
     amqp_rpc_reply_t ret;
     amqp_envelope_t envelope;
+    SV *props;
+    SV *body;
 
     ret = amqp_consume_message( conn, &envelope, timeout, 0 );
 
@@ -609,11 +609,13 @@ static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envel
     hv_stores(envelope_hv, "consumer_tag", newSVpvn(envelope.consumer_tag.bytes, envelope.consumer_tag.len));
     hv_stores(envelope_hv, "routing_key",  newSVpvn(envelope.routing_key.bytes, envelope.routing_key.len));
 
-    ret = parse_message( envelope.message, hv_fetchs(envelope_hv, "props", 1), hv_fetchs(envelope_hv, "body", 1) );
-
+    ret = parse_amqp_message( envelope.message, &props, &body );
     if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
         goto error_out;
     }
+
+    hv_stores(envelope_hv, "props", props);
+    hv_stores(envelope_hv, "body", body);
 
     *envelope_sv_ptr = newRV_noinc(MUTABLE_SV(envelope_hv));
 
@@ -1001,44 +1003,49 @@ void hash_to_amqp_table(HV *hash, amqp_table_t *table, short force_utf8) {
 static amqp_rpc_reply_t basic_get(amqp_connection_state_t state, amqp_channel_t channel, amqp_bytes_t queue, SV **envelope_sv_ptr, amqp_boolean_t no_ack) {
   amqp_rpc_reply_t ret;
   HV *envelope_hv = NULL;
-
-  ret = amqp_basic_get(state, channel, queue, no_ack);
-  if (AMQP_RESPONSE_NORMAL != ret.reply_type)
-    goto error_out1;
-
-  if (AMQP_BASIC_GET_OK_METHOD != ret.reply.id)
-    goto success_out;
-
-  envelope_hv = newHV();
-
-  {
-    amqp_basic_get_ok_t *ok = (amqp_basic_get_ok_t *) ret.reply.decoded;
-    hv_stores(envelope_hv, "delivery_tag",  newSVu64(ok->delivery_tag));
-    hv_stores(envelope_hv, "redelivered",   newSViv(ok->redelivered));
-    hv_stores(envelope_hv, "exchange",      newSVpvn(ok->exchange.bytes, ok->exchange.len));
-    hv_stores(envelope_hv, "routing_key",   newSVpvn(ok->routing_key.bytes, ok->routing_key.len));
-    hv_stores(envelope_hv, "message_count", newSViv(ok->message_count));
-  }
+  SV *props;
+  SV *body;
 
   amqp_message_t message;
 
-  ret = amqp_read_message(state, channel, &message, 0);
-
-  ret = parse_message( message, hv_fetchs(envelope_hv, "props", 1), hv_fetchs(envelope_hv, "body", 1) );
-  amqp_destroy_message( &message );
-
+  ret = amqp_basic_get(state, channel, queue, no_ack);
   if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-    goto error_out;
+    goto error_out1;
   }
 
+  if (AMQP_BASIC_GET_OK_METHOD != ret.reply.id) {
+    goto success_out;
+  }
+
+  envelope_hv = newHV();
+
+  amqp_basic_get_ok_t *ok = (amqp_basic_get_ok_t *) ret.reply.decoded;
+  hv_stores(envelope_hv, "delivery_tag",  newSVu64(ok->delivery_tag));
+  hv_stores(envelope_hv, "redelivered",   newSViv(ok->redelivered));
+  hv_stores(envelope_hv, "exchange",      newSVpvn(ok->exchange.bytes, ok->exchange.len));
+  hv_stores(envelope_hv, "routing_key",   newSVpvn(ok->routing_key.bytes, ok->routing_key.len));
+  hv_stores(envelope_hv, "message_count", newSViv(ok->message_count));
+
+  ret = amqp_read_message(state, channel, &message, 0);
+
+  ret = parse_amqp_message( message, &props, &body );
+  if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+      goto error_out2;
+  }
+
+  hv_stores(envelope_hv, "props", props);
+  hv_stores(envelope_hv, "body", body);
+
+  amqp_destroy_message( &message );
 success_out:
   *envelope_sv_ptr = envelope_hv ? newRV_noinc(MUTABLE_SV(envelope_hv)) : &PL_sv_undef;
   ret.reply_type = AMQP_RESPONSE_NORMAL;
   return ret;
 
-error_out:
+error_out2:
   SvREFCNT_dec(envelope_hv);
 error_out1:
+  amqp_destroy_message( &message );
   *envelope_sv_ptr = &PL_sv_undef;
   return ret;
 }
