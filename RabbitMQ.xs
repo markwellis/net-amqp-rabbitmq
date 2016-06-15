@@ -344,6 +344,8 @@ amqp_field_value_kind_t amqp_kind_for_sv(SV** perl_value, short force_utf8) {
 }
 
 amqp_rpc_reply_t parse_message( amqp_message_t message, SV **props_sv_ptr, SV **body_sv_ptr ) {
+  SvREFCNT_dec( *props_sv_ptr );
+  SvREFCNT_dec( *body_sv_ptr );
     HV *props_hv = newHV();
     SV *body_sv;
     int is_utf8_body = 1; /* The body is UTF-8 by default */
