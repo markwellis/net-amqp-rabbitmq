@@ -343,36 +343,13 @@ amqp_field_value_kind_t amqp_kind_for_sv(SV** perl_value, short force_utf8) {
   Perl_croak( aTHX_ "The wheels have fallen off. Please call for help." );
 }
 
-/* Parallels amqp_read_message */
-static amqp_rpc_reply_t read_message(amqp_connection_state_t state, amqp_channel_t channel, SV **props_sv_ptr, SV **body_sv_ptr) {
-}
-
-/* wraps amqp_consume_message */
-static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envelope_sv_ptr, struct timeval *timeout) {
-    amqp_rpc_reply_t ret;
-    amqp_envelope_t envelope;
-    HV *envelope_hv;
-    HV *props_hv;
+amqp_rpc_reply_t parse_message( amqp_message_t message, SV **props_sv_ptr, SV **body_sv_ptr ) {
+    HV *props_hv = newHV();
+    SV *body_sv;
     int is_utf8_body = 1; /* The body is UTF-8 by default */
+    amqp_rpc_reply_t ret;
 
-    ret = amqp_consume_message( conn, &envelope, timeout, 0 );
-
-    if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-        goto error_out;
-    }
-
-    envelope_hv = newHV();
-
-    hv_stores(envelope_hv, "channel",      newSViv(envelope.channel));
-    hv_stores(envelope_hv, "delivery_tag", newSVu64(envelope.delivery_tag));
-    hv_stores(envelope_hv, "redelivered",  newSViv(envelope.redelivered));
-    hv_stores(envelope_hv, "exchange",     newSVpvn(envelope.exchange.bytes, envelope.exchange.len));
-    hv_stores(envelope_hv, "consumer_tag", newSVpvn(envelope.consumer_tag.bytes, envelope.consumer_tag.len));
-    hv_stores(envelope_hv, "routing_key",  newSVpvn(envelope.routing_key.bytes, envelope.routing_key.len));
-
-    props_hv = newHV();
-
-    amqp_basic_properties_t *p = &envelope.message.properties;
+    amqp_basic_properties_t *p = &message.properties;
     if (p->_flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
         hv_stores(props_hv, "content_type", newSVpvn(p->content_type.bytes, p->content_type.len));
     }
@@ -592,17 +569,56 @@ static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envel
         }
     }
 
-    hv_stores(envelope_hv, "props", newRV_noinc(MUTABLE_SV(props_hv)));
-
-    SV *body_sv = newSVpvn(envelope.message.body.bytes, envelope.message.body.len);
+    body_sv = newSVpvn(message.body.bytes, message.body.len);
     if (is_utf8_body) {
         SvUTF8_on(body_sv);
     }
-    hv_stores(envelope_hv, "body", body_sv);
+
+    *props_sv_ptr = newRV_noinc(MUTABLE_SV(props_hv));
+    *body_sv_ptr = body_sv;
+
+    ret.reply_type = AMQP_RESPONSE_NORMAL;
+    return ret;
+
+error_out:
+    SvREFCNT_dec(props_hv);
+    SvREFCNT_dec(body_sv);
+
+    return ret;
+}
+
+/* wraps amqp_consume_message */
+static amqp_rpc_reply_t consume_message(amqp_connection_state_t conn, SV **envelope_sv_ptr, struct timeval *timeout) {
+    amqp_rpc_reply_t ret;
+    amqp_envelope_t envelope;
+
+    ret = amqp_consume_message( conn, &envelope, timeout, 0 );
+
+    if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+        goto error_out;
+    }
+
+    HV *envelope_hv = newHV();
+
+    hv_stores(envelope_hv, "channel",      newSViv(envelope.channel));
+    hv_stores(envelope_hv, "delivery_tag", newSVu64(envelope.delivery_tag));
+    hv_stores(envelope_hv, "redelivered",  newSViv(envelope.redelivered));
+    hv_stores(envelope_hv, "exchange",     newSVpvn(envelope.exchange.bytes, envelope.exchange.len));
+    hv_stores(envelope_hv, "consumer_tag", newSVpvn(envelope.consumer_tag.bytes, envelope.consumer_tag.len));
+    hv_stores(envelope_hv, "routing_key",  newSVpvn(envelope.routing_key.bytes, envelope.routing_key.len));
+
+    ret = parse_message( envelope.message, hv_fetchs(envelope_hv, "props", 1), hv_fetchs(envelope_hv, "body", 1) );
+
+    if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+        goto error_out;
+    }
 
     *envelope_sv_ptr = newRV_noinc(MUTABLE_SV(envelope_hv));
 
+    ret.reply_type = AMQP_RESPONSE_NORMAL;
+
     amqp_destroy_envelope( &envelope );
+
     return ret;
 
 error_out:
@@ -1002,9 +1018,12 @@ static amqp_rpc_reply_t basic_get(amqp_connection_state_t state, amqp_channel_t 
     hv_stores(envelope_hv, "message_count", newSViv(ok->message_count));
   }
 
-  ret = read_message(state, channel,
-    hv_fetchs(envelope_hv, "props", 1),
-    hv_fetchs(envelope_hv, "body",  1));
+  amqp_message_t *message;
+
+  ret = amqp_read_message(state, channel, message, 0);
+
+//    hv_fetchs(envelope_hv, "props", 1),
+//    hv_fetchs(envelope_hv, "body",  1));
   if (AMQP_RESPONSE_NORMAL != ret.reply_type)
     goto error_out;
   
