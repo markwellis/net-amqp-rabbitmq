@@ -560,7 +560,7 @@ calls are made.
 =head1 RUNNING THE TEST SUITE
 
 The test suite runs live tests against a RabbitMQ server at
-C<rabbitmq.thisaintnews.com>.
+L<https://www.cloudamqp.com>
 
 There are separte variables for the ssl and none ssl host/user/password/port.
 
@@ -572,11 +572,11 @@ host (or the test server is down), you can use these environment variables:
 =item MQHOST
 
 Hostname or IP address of the RabbitMQ server to connect to (defaults
-to C<rabbitmq.thisaintnews.com>).
+to C<hornet.rmq.cloudamqp.com>).
 
 =item MQUSERNAME
 
-Username for authentication (defaults to "nartest").
+Username for authentication (defaults to username for L<https://www.cloudamqp.com>).
 
 =item MQPASSWORD
 
@@ -595,16 +595,18 @@ see also C<MQSKIPSSL>).
 
 Whether the SSL tests should be skipped entirely.  This option exists
 because the SSL tests used to ignore C<MQSSL>, and to maintain
-backwards compatibility, still do.
+backwards compatibility, still do. Default is skip SSL
+
+You have to explicitly set this to 0 to do the SSL tests
 
 =item MQSSLHOST
 
 Hostname or IP address of the RabbitMQ server to connect to (defaults
-to C<rabbitmq.thisaintnews.com>).
+to C<hornet.rmq.cloudamqp.com>).
 
 =item MQSSLUSERNAME
 
-Username for authentication (defaults to "nartest").
+Username for authentication (defaults to password for L<https://www.cloudamqp.com>).
 
 =item MQSSLPASSWORD
 
@@ -664,6 +666,10 @@ Alexey Sheynuk
 Karen Etheridge E<lt>ether@cpan.orgE<gt>
 
 Eric Brine E<lt>ikegami@cpan.orgE<gt>
+
+=head1 THANKS
+
+L<https://www.cloudamqp.com> for providing us with the test server
 
 =head1 LICENSE
 

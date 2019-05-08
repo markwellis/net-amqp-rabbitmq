@@ -12,16 +12,14 @@ if ( !Net::AMQP::RabbitMQ::has_ssl ) {
     plan skip_all => 'Net::AMQP::RabbitMQ compiled without SSL support';
 }
 
-if ($ENV{MQSKIPSSL}) {
+#have to specifically enable it by setting MQSKIPSSL=0, for backwards compat
+if ($ENV{MQSKIPSSL} != 0) {
     plan skip_all => 'SSL tests disabled by user';
 } else {
     plan tests => 10;
 }
 
-# MQSKIPSSL not set, set SSL-related options to default values unless
-# already set by the user.  Those ought to work with the default
-# server at rabbitmq.thisaintnews.com (which you get if you don't set
-# MQHOST).
+# MQSKIPSSL not set, set SSL-related options to values set by the user.
 
 my $helper = NAR::Helper->new(
     ssl => 1,
