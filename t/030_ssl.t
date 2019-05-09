@@ -12,8 +12,7 @@ if ( !Net::AMQP::RabbitMQ::has_ssl ) {
     plan skip_all => 'Net::AMQP::RabbitMQ compiled without SSL support';
 }
 
-#have to specifically enable it by setting MQSKIPSSL=0, for backwards compat
-if ($ENV{MQSKIPSSL} != 0) {
+if ($ENV{MQSKIPSSL}) {
     plan skip_all => 'SSL tests disabled by user';
 } else {
     plan tests => 10;

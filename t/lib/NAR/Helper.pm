@@ -23,8 +23,7 @@ sub new {
         $ssl_init = $ENV{MQSSLINIT};
     }
 
-    #XXX we don't use this one yet, waiting on a librabbitmq upgrade
-    my $ssl_verify_peer = 1;
+    my $ssl_verify_peer = 0;
     if ( defined($ENV{MQSSLVERIFYPEER}) ) {
         $ssl_verify_peer = $ENV{MQSSLVERIFYPEER};
     }
